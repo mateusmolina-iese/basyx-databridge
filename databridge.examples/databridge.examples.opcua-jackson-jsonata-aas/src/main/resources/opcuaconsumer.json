@@ -1,7 +1,7 @@
 [
 	{
 		"uniqueId": "doublescalar",
-		"nodeInformation": "ns=2;s=HelloWorld/ScalarTypes/Double",
+		"nodeInformation": "ns=2;s=HelloWorld/Dynamic/Double",
 		"serverUrl": "127.0.0.1",
 		"serverPort": 12686,
 		"pathToService": "milo",
@@ -17,7 +17,7 @@
 	},
 	{
 		"uniqueId": "integerscalar",
-		"nodeInformation": "ns=2;s=HelloWorld/ScalarTypes/Integer",
+		"nodeInformation": "ns=2;s=HelloWorld/Dynamic/Int32",
 		"serverUrl": "127.0.0.1",
 		"serverPort": 12686,
 		"pathToService": "milo",
