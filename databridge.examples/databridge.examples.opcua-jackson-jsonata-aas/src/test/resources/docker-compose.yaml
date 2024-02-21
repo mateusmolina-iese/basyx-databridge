@@ -1,0 +1,17 @@
+services:
+  opcua:
+    image: aaronzi/demo-opc-server:v1.0.0
+    container_name: opcserver
+    ports:
+      - 4840:4840
+      - 8080:8080
+    healthcheck:
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      test:
+        - CMD
+        - curl
+        - -f
+        - http://localhost:8080/health
+    restart: always

@@ -26,8 +26,6 @@ package org.eclipse.digitaltwin.basyx.databridge.examples.opcuaaas.test;
 
 import static org.junit.Assert.assertNotEquals;
 
-import java.util.concurrent.ExecutionException;
-
 import org.eclipse.basyx.aas.manager.ConnectedAssetAdministrationShellManager;
 import org.eclipse.basyx.aas.metamodel.connected.ConnectedAssetAdministrationShell;
 import org.eclipse.basyx.aas.metamodel.map.descriptor.CustomId;
@@ -69,12 +67,10 @@ public class StressTest {
 	private final static int NUMBER_OF_CHECKS = (int) (TOTAL_TEST_TIME / PROPERTY_CHECK_INTERVAL);
 
 	private Object propALastValue = "";
-	private Object propBLastValue = "";
 
 	@BeforeClass
 	public static void setUp() throws Exception {
 		System.out.println("Setting up env...");
-		startOpcUaServer();
 		registry = new InMemoryRegistry();
 
 		aasContextConfig = new BaSyxContextConfiguration(4001, "");
@@ -89,7 +85,6 @@ public class StressTest {
 		System.out.println("Tearing down env...");
 		updater.stopComponent();
 		aasServer.stopComponent();
-		stopOpcUaServer();
 	}
 
 	@Test
@@ -140,22 +135,9 @@ public class StressTest {
 		ISubmodel sm = aas.getSubmodels().get("ConnectedSubmodel");
 		ISubmodelElement propertyA = sm.getSubmodelElement("ConnectedPropertyA");
 		Object propAValue = propertyA.getValue();
-		ISubmodelElement propertyB = sm.getSubmodelElement("ConnectedPropertyB");
-		Object propBValue = propertyB.getValue();
 
 		// Should not be the case when the connection times out
 		assertNotEquals(propALastValue, propAValue);
-		assertNotEquals(propBLastValue, propBValue);
 		propALastValue = propAValue;
-		propBLastValue = propBValue;
-	}
-
-	private static void startOpcUaServer() throws Exception {
-		opcUaServer = new ExampleServer();
-		opcUaServer.startup().get();
-	}
-
-	private static void stopOpcUaServer() throws InterruptedException, ExecutionException {
-		opcUaServer.shutdown().get();
 	}
 }

@@ -1,28 +1,13 @@
 [
 	{
-		"uniqueId": "doublescalar",
-		"nodeInformation": "ns=2;s=HelloWorld/Dynamic/Double",
+		"uniqueId": "testnode",
+		"nodeInformation": "ns=2;i=10",
 		"serverUrl": "127.0.0.1",
-		"serverPort": 12686,
+		"serverPort": 4840,
 		"pathToService": "milo",
+		"username" : "test",
+		"password" : "test", 
 		"parameters": {
-			"allowedSecurityPolicies": "None",
-			"keyAlias": null,
-			"keyPassword": null,
-			"keyStoreType": null,
-			"keyStorePassword": null,
-			"keyStoreUrl": null,
-			"requestedPublishingInterval": 50
-		}
-	},
-	{
-		"uniqueId": "integerscalar",
-		"nodeInformation": "ns=2;s=HelloWorld/Dynamic/Int32",
-		"serverUrl": "127.0.0.1",
-		"serverPort": 12686,
-		"pathToService": "milo",
-		"parameters": {
-			"allowedSecurityPolicies": "Basic256Sha256",
 			"requestedPublishingInterval": 50
 		}
 	}
