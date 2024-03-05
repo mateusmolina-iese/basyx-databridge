@@ -36,8 +36,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.util.EntityUtils;
-import org.eclipse.basyx.aas.metamodel.map.descriptor.CustomId;
-import org.eclipse.basyx.submodel.metamodel.api.identifier.IIdentifier;
 import org.eclipse.digitaltwin.basyx.databridge.aas.configuration.factory.AASProducerDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.core.component.DataBridgeComponent;
 import org.eclipse.digitaltwin.basyx.databridge.core.configuration.factory.RoutesConfigurationFactory;
@@ -57,8 +55,6 @@ import org.junit.Test;
  */
 public class StressTest {
 	private static DataBridgeComponent updater;
-
-	protected static IIdentifier deviceAAS = new CustomId("https://example.com/ids/sm/0002_0122_2042_5943");
 
 	private final static long TOTAL_TEST_TIME = 60 * 1000 * 6; // ms
 	private final static long PROPERTY_CHECK_INTERVAL = 2000; // ms
