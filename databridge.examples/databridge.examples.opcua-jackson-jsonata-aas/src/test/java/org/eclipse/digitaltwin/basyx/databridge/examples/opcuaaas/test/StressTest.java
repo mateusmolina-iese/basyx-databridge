@@ -1,5 +1,5 @@
 /*******************************************************************************
- * Copyright (C) 2021 the Eclipse BaSyx Authors
+ * Copyright (C) 2024 the Eclipse BaSyx Authors
  * 
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -29,6 +29,7 @@ import static org.junit.Assert.assertNotEquals;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 import org.apache.http.client.methods.CloseableHttpResponse;
@@ -43,53 +44,88 @@ import org.eclipse.digitaltwin.basyx.databridge.core.configuration.route.core.Ro
 import org.eclipse.digitaltwin.basyx.databridge.jsonata.configuration.factory.JsonataDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.jsonjackson.configuration.factory.JsonJacksonDefaultConfigurationFactory;
 import org.eclipse.digitaltwin.basyx.databridge.opcua.configuration.factory.OpcuaDefaultConfigurationFactory;
-import org.junit.AfterClass;
+import org.eclipse.milo.opcua.sdk.client.OpcUaClient;
+import org.eclipse.milo.opcua.sdk.client.api.identity.UsernameProvider;
+import org.eclipse.milo.opcua.stack.core.UaException;
+import org.eclipse.milo.opcua.stack.core.types.builtin.DataValue;
+import org.eclipse.milo.opcua.stack.core.types.builtin.NodeId;
+import org.eclipse.milo.opcua.stack.core.types.builtin.Variant;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 
 /**
- * Based on TestAASUpdater
+ * Stress Test #4
+ * 
+ * Tests if the subscription of a non-frequently changing OPC UA node times out
+ * after a given time
  * 
  * Requires running MongoDB and BaSyxV2 instances
  * 
  * @see docker-compose.yaml @ src/test/resources
  */
+@RunWith(Parameterized.class)
 public class StressTest {
-	private static DataBridgeComponent updater;
+	private static OpcUaClient opcUaClient;
+	private static CloseableHttpClient httpClient;
+	private static DataBridgeComponent databridgeComponent;
 
-	private final static long TOTAL_TEST_TIME = 60 * 1000 * 6; // ms
-	private final static long PROPERTY_CHECK_INTERVAL = 2000; // ms
+	private final static int NUMBER_OF_CHECKS = 2;
+
+	private static final String OPCUA_SERVER_URL = "opc.tcp://127.0.0.1:4840";
+	private static final String OPCUA_NODE = "ns=2;i=6";
 
 	private static final String SUBMODEL_ENDPOINT = "http://localhost:8081/submodels/aHR0cHM6Ly9leGFtcGxlLmNvbS9pZHMvc20vMDAwMl8wMTIyXzIwNDJfNjI1Mw";
-	private static final String[] ID_SHORTS = { "DynamicFloat" };
+	private static final String[] ID_SHORTS = { "Temperature" };
 
-	private final static int NUMBER_OF_CHECKS = (int) (TOTAL_TEST_TIME / PROPERTY_CHECK_INTERVAL);
 	private Object[] lastValues = new Object[ID_SHORTS.length];
 
-	private static CloseableHttpClient httpClient = HttpClients.createDefault();
+	@BeforeClass
+	public static void initStaticAttr() throws Exception {
+		opcUaClient = buildOpcUaClient();
+		httpClient = HttpClients.createDefault();
+		databridgeComponent = buildDatabridgeComponent();
+	}
 
-	@AfterClass
-	public static void tearDown() throws Exception {
-		System.out.println("Tearing down env...");
-		updater.stopComponent();
+	@Before
+	public void initTest() throws InterruptedException {
+		databridgeComponent.startComponent();
+		Thread.sleep(3000);
+	}
+
+	@After
+	public void tearDown() {
+		databridgeComponent.stopComponent();
 	}
 
 	@Test
-	public void test() throws Exception {
-		setupDatabridge();
+	public void testFor4Min() throws Exception {
+		testUpdateFor(60 * 1000 * 4, NUMBER_OF_CHECKS);
+	}
 
-		Thread.sleep(3000);
+	@Test
+	public void testFor8Min() throws Exception {
+		testUpdateFor(60 * 1000 * 8, NUMBER_OF_CHECKS);
+	}
 
+	private void testUpdateFor(long checkInterval, int numChecks) throws Exception {
 		List<String> propEndpoints = Arrays.asList(ID_SHORTS).stream().map(StressTest::buildGetPropValueEndpoint).collect(Collectors.toList());
 
-		for (int i = 0; i < NUMBER_OF_CHECKS; i++) {
-			Thread.sleep(PROPERTY_CHECK_INTERVAL);
-			long elapsedTime = i * PROPERTY_CHECK_INTERVAL / 1000; // s
+		for (int i = 0; i < numChecks; i++) {
+			Thread.sleep(checkInterval);
+			long elapsedTime = i * checkInterval / 1000; // s
 			System.out.println("Try=#" + i + " / ElapsedTime=" + elapsedTime + "s");
-			checkProperties(propEndpoints);
+
+			publishToNode(OPCUA_NODE, elapsedTime);
+
+			assertPropertiesChanged(propEndpoints);
 		}
 	}
 
-	private void checkProperties(List<String> endpoints) throws InterruptedException, IOException {
+	private void assertPropertiesChanged(List<String> endpoints) throws InterruptedException, IOException {
 		int i = 0;
 		for (String propEndpoint : endpoints) {
 			String result = executeHttpGetRequest(propEndpoint);
@@ -102,12 +138,20 @@ public class StressTest {
 		}
 	}
 
-	private static String buildGetPropValueEndpoint(String idShort) {
-		return SUBMODEL_ENDPOINT + "/submodel-elements/" + idShort + "/$value";
+	private void publishToNode(String nodeId, float value) throws InterruptedException, ExecutionException {
+		opcUaClient.connect().get();
+
+		NodeId targetNodeId = NodeId.parse(nodeId);
+		Variant varValue = new Variant(value);
+
+		opcUaClient.writeValue(targetNodeId, new DataValue(varValue)).get();
+
+		opcUaClient.disconnect().get();
 	}
 
-	private void setupDatabridge() {
-		ClassLoader loader = this.getClass().getClassLoader();
+
+	private static DataBridgeComponent buildDatabridgeComponent() throws InterruptedException {
+		ClassLoader loader = StressTest.class.getClassLoader();
 		RoutesConfiguration configuration = new RoutesConfiguration();
 
 		RoutesConfigurationFactory routesFactory = new RoutesConfigurationFactory(loader);
@@ -125,8 +169,13 @@ public class StressTest {
 		JsonataDefaultConfigurationFactory jsonataConfigFactory = new JsonataDefaultConfigurationFactory(loader);
 		configuration.addTransformers(jsonataConfigFactory.create());
 
-		updater = new DataBridgeComponent(configuration);
-		updater.startComponent();
+		DataBridgeComponent updater = new DataBridgeComponent(configuration);
+
+		return updater;
+	}
+
+	private static String buildGetPropValueEndpoint(String idShort) {
+		return SUBMODEL_ENDPOINT + "/submodel-elements/" + idShort + "/$value";
 	}
 
 	private static String executeHttpGetRequest(String endpoint) throws IOException {
@@ -140,4 +189,7 @@ public class StressTest {
 		}
 	}
 
+	private static OpcUaClient buildOpcUaClient() throws UaException {
+		return OpcUaClient.create(OPCUA_SERVER_URL, eps -> eps.stream().findFirst(), b -> b.setIdentityProvider(new UsernameProvider("test", "test")).build());
+	}
 }
