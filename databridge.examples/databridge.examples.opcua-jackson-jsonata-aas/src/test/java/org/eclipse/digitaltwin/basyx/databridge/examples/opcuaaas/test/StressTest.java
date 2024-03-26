@@ -54,8 +54,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
 
 /**
  * Stress Test #4
@@ -67,7 +65,6 @@ import org.junit.runners.Parameterized;
  * 
  * @see docker-compose.yaml @ src/test/resources
  */
-@RunWith(Parameterized.class)
 public class StressTest {
 	private static OpcUaClient opcUaClient;
 	private static CloseableHttpClient httpClient;
